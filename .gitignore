@@ -1,0 +1,109 @@
+# ==============================================================================
+# .gitignore for SQL Repository
+# ==============================================================================
+
+# macOS System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# SQL Database Files
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# SQL Server Files
+*.mdf
+*.ldf
+*.ndf
+*.bak
+
+# MySQL Files
+*.frm
+*.ibd
+*.MYD
+*.MYI
+
+# PostgreSQL Files
+*.dump
+postmaster.pid
+
+# Oracle Files
+*.dbf
+*.ctl
+*.log
+*.arc
+*.trc
+
+# Database Backup Files
+*.backup
+*.dump
+*.sql.gz
+*.sql.bz2
+*.sql.xz
+
+# Log Files
+*.log
+*.out
+*.err
+error.log
+query.log
+slow.log
+
+# Temporary Files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.#*
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.atom/
+
+# Environment Files
+.env
+.env.local
+.env.production
+.env.development
+config.ini
+settings.ini
+
+# Cache and Build Directories
+cache/
+build/
+dist/
+tmp/
+temp/
+
+# Documentation Build Files
+docs/_build/
+*.pdf (if generated)
+
+# Compiled Files
+*.class
+*.pyc
+*.pyo
+
+# Archives and Packages
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Personal Notes
+notes.txt
+todo.txt
+scratch.sql
+test.sql
