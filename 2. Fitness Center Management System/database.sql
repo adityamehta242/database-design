@@ -35,51 +35,57 @@ CREATE DATABASE IF NOT EXISTS fitness_center_management_system;
 USE fitness_center_management_system;
 
 CREATE TABLE address(
-    id UUID PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY,
     street VARCHAR(255) NOT NULL,
     city VARCHAR(100) NOT NULL,
     state VARCHAR(100) NOT NULL,
     zip_code VARCHAR(10) NOT NULL,
-    country VARCHAR(100) NOT NULL DEFAULT 'USA'
+    country VARCHAR(100) NOT NULL DEFAULT 'INDIA'
 );
 
 CREATE TABLE member(
-    id UUID PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     phone VARCHAR(20) NOT NULL,
     date_of_birth DATE,
-    address_id UUID NOT NULL,
+    address_id CHAR(36) NOT NULL,
+    account_status ENUM('active', 'suspended', 'inactive') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (address_id) REFERENCES address(id)
+    FOREIGN KEY (address_id) REFERENCES address(id),
+    INDEX idx_email (email),
+    INDEX idx_account_status (account_status)
 );
 
 CREATE TABLE trainer(
-    id UUID PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     phone VARCHAR(20) NOT NULL,
     hire_date DATE NOT NULL,
-    address_id UUID NOT NULL,
-    FOREIGN KEY (address_id) REFERENCES address(id)
+    address_id CHAR(36) NOT NULL,
+    employment_status ENUM('active', 'on_leave', 'terminated') DEFAULT 'active',
+    FOREIGN KEY (address_id) REFERENCES address(id),
+    INDEX idx_email (email)
 );
 
 CREATE TABLE gym_location(
-    id UUID PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     phone VARCHAR(20),
-    address_id UUID NOT NULL,
+    address_id CHAR(36) NOT NULL,
     opening_time TIME,
     closing_time TIME,
+    is_active BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (address_id) REFERENCES address(id)
 );
 
 CREATE TABLE trainer_location(
-    trainer_id UUID NOT NULL,
-    gym_location_id UUID NOT NULL,
+    trainer_id CHAR(36) NOT NULL,
+    gym_location_id CHAR(36) NOT NULL,
     start_date DATE NOT NULL,
     end_date DATE,
     PRIMARY KEY (trainer_id, gym_location_id),
@@ -88,119 +94,141 @@ CREATE TABLE trainer_location(
 );
 
 CREATE TABLE trainer_certification(
-    id UUID PRIMARY KEY,
-    trainer_id UUID NOT NULL,
+    id CHAR(36) PRIMARY KEY,
+    trainer_id CHAR(36) NOT NULL,
     certification_name VARCHAR(255) NOT NULL,
     issuing_organization VARCHAR(255),
     certification_date DATE NOT NULL,
     expiry_date DATE,
-    FOREIGN KEY (trainer_id) REFERENCES trainer(id) ON DELETE CASCADE
+    FOREIGN KEY (trainer_id) REFERENCES trainer(id) ON DELETE CASCADE,
+    INDEX idx_expiry (trainer_id, expiry_date)
 );
 
 CREATE TABLE trainer_specialty(
-    id UUID PRIMARY KEY,
-    trainer_id UUID NOT NULL,
+    id CHAR(36) PRIMARY KEY,
+    trainer_id CHAR(36) NOT NULL,
     specialty VARCHAR(100) NOT NULL,
     FOREIGN KEY (trainer_id) REFERENCES trainer(id) ON DELETE CASCADE
 );
 
 CREATE TABLE membership_plan(
-    id UUID PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     description TEXT,
     price DECIMAL(10, 2) NOT NULL,
     duration_type ENUM('monthly', 'quarterly', 'annual', 'trial') NOT NULL,
-    duration_days INT NOT NULL,  -- 30, 90, 365, 7, etc.
+    duration_days INT NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE membership_history(
-    id UUID PRIMARY KEY,
-    member_id UUID NOT NULL,
-    plan_id UUID NOT NULL,
+    id CHAR(36) PRIMARY KEY,
+    member_id CHAR(36) NOT NULL,
+    plan_id CHAR(36) NOT NULL,
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
     status ENUM('active', 'expired', 'cancelled') DEFAULT 'active',
     cancellation_reason TEXT,
+    cancellation_date DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (member_id) REFERENCES member(id) ON DELETE CASCADE,
-    FOREIGN KEY (plan_id) REFERENCES membership_plan(id),
-    INDEX idx_member_status (member_id, status)
+    FOREIGN KEY (plan_id) REFERENCES membership_plan(id) ON DELETE RESTRICT,
+    INDEX idx_member_status (member_id, status),
+    INDEX idx_end_date (end_date),
+    CONSTRAINT unique_active_membership UNIQUE (member_id, status)
+);
+
+CREATE TABLE payment(
+    id CHAR(36) PRIMARY KEY,
+    member_id CHAR(36) NOT NULL,
+    membership_history_id CHAR(36),
+    amount DECIMAL(10, 2) NOT NULL,
+    payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    payment_method ENUM('credit_card', 'debit_card', 'cash', 'bank_transfer', 'other') NOT NULL,
+    payment_status ENUM('pending', 'completed', 'failed', 'refunded') DEFAULT 'completed',
+    transaction_reference VARCHAR(255),
+    notes TEXT,
+    FOREIGN KEY (member_id) REFERENCES member(id) ON DELETE CASCADE,
+    FOREIGN KEY (membership_history_id) REFERENCES membership_history(id) ON DELETE SET NULL,
+    INDEX idx_member_payment (member_id, payment_date),
+    INDEX idx_payment_status (payment_status)
 );
 
 CREATE TABLE class_template(
-    id UUID PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     day_of_week ENUM('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'),
     start_time TIME NOT NULL,
     duration_minutes INT NOT NULL,
     capacity INT NOT NULL CHECK(capacity > 0),
-    gym_location_id UUID NOT NULL,
-    trainer_id UUID,
+    gym_location_id CHAR(36) NOT NULL,
+    trainer_id CHAR(36),
     is_active BOOLEAN DEFAULT TRUE,
-    FOREIGN KEY (gym_location_id) REFERENCES gym_location(id),
+    FOREIGN KEY (gym_location_id) REFERENCES gym_location(id) ON DELETE CASCADE,
     FOREIGN KEY (trainer_id) REFERENCES trainer(id) ON DELETE SET NULL
 );
 
 CREATE TABLE class_occurrence(
-    id UUID PRIMARY KEY,
-    class_template_id UUID NOT NULL,
+    id CHAR(36) PRIMARY KEY,
+    class_template_id CHAR(36) NOT NULL,
     scheduled_date DATE NOT NULL,
-    start_time TIME NOT NULL,
-    duration_minutes INT NOT NULL,
-    actual_capacity INT,
+    start_time TIME,
+    duration_minutes INT,
     status ENUM('scheduled', 'completed', 'cancelled') DEFAULT 'scheduled',
     cancellation_reason TEXT,
-    FOREIGN KEY (class_template_id) REFERENCES class_template(id),
+    FOREIGN KEY (class_template_id) REFERENCES class_template(id) ON DELETE CASCADE,
     UNIQUE KEY unique_class_date (class_template_id, scheduled_date),
-    INDEX idx_scheduled_date (scheduled_date)
+    INDEX idx_scheduled_date (scheduled_date),
+    INDEX idx_status (status)
 );
 
 CREATE TABLE class_booking(
-    id UUID PRIMARY KEY,
-    class_occurrence_id UUID NOT NULL,
-    member_id UUID NOT NULL,
+    id CHAR(36) PRIMARY KEY,
+    class_occurrence_id CHAR(36) NOT NULL,
+    member_id CHAR(36) NOT NULL,
     booked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     attended BOOLEAN DEFAULT FALSE,
     cancelled_at TIMESTAMP,
     FOREIGN KEY (class_occurrence_id) REFERENCES class_occurrence(id) ON DELETE CASCADE,
     FOREIGN KEY (member_id) REFERENCES member(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_member_class (class_occurrence_id, member_id)
+    UNIQUE KEY unique_member_class (class_occurrence_id, member_id),
+    INDEX idx_attended (class_occurrence_id, attended)
 );
 
 CREATE TABLE personal_training_session(
-    id UUID PRIMARY KEY,
-    member_id UUID NOT NULL,
-    trainer_id UUID NOT NULL,
-    gym_location_id UUID NOT NULL,
+    id CHAR(36) PRIMARY KEY,
+    member_id CHAR(36) NOT NULL,
+    trainer_id CHAR(36) NOT NULL,
+    gym_location_id CHAR(36) NOT NULL,
     scheduled_datetime TIMESTAMP NOT NULL,
     duration_minutes INT DEFAULT 60,
     status ENUM('scheduled', 'completed', 'cancelled', 'no_show') DEFAULT 'scheduled',
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (member_id) REFERENCES member(id),
-    FOREIGN KEY (trainer_id) REFERENCES trainer(id),
-    FOREIGN KEY (gym_location_id) REFERENCES gym_location(id),
+    FOREIGN KEY (member_id) REFERENCES member(id) ON DELETE CASCADE,
+    FOREIGN KEY (trainer_id) REFERENCES trainer(id) ON DELETE RESTRICT,
+    FOREIGN KEY (gym_location_id) REFERENCES gym_location(id) ON DELETE RESTRICT,
     INDEX idx_trainer_date (trainer_id, scheduled_datetime),
     INDEX idx_member_date (member_id, scheduled_datetime)
 );
 
 CREATE TABLE equipment(
-    id UUID PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    serial_number VARCHAR(100),
+    serial_number VARCHAR(100) UNIQUE,
     purchase_date DATE,
-    quantity INT NOT NULL DEFAULT 1,
     status ENUM('operational', 'maintenance', 'broken', 'retired') DEFAULT 'operational',
-    gym_location_id UUID NOT NULL,
-    FOREIGN KEY (gym_location_id) REFERENCES gym_location(id)
+    gym_location_id CHAR(36) NOT NULL,
+    FOREIGN KEY (gym_location_id) REFERENCES gym_location(id) ON DELETE CASCADE,
+    INDEX idx_location_status (gym_location_id, status)
 );
 
 CREATE TABLE equipment_maintenance(
-    id UUID PRIMARY KEY,
-    equipment_id UUID NOT NULL,
+    id CHAR(36) PRIMARY KEY,
+    equipment_id CHAR(36) NOT NULL,
     maintenance_date DATE NOT NULL,
     next_service_date DATE,
     maintenance_type ENUM('routine', 'repair', 'inspection') NOT NULL,
@@ -212,12 +240,12 @@ CREATE TABLE equipment_maintenance(
 );
 
 CREATE TABLE check_in(
-    id UUID PRIMARY KEY,
-    member_id UUID NOT NULL,
-    gym_location_id UUID NOT NULL,
+    id CHAR(36) PRIMARY KEY,
+    member_id CHAR(36) NOT NULL,
+    gym_location_id CHAR(36) NOT NULL,
     check_in_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (member_id) REFERENCES member(id) ON DELETE CASCADE,
-    FOREIGN KEY (gym_location_id) REFERENCES gym_location(id),
+    FOREIGN KEY (gym_location_id) REFERENCES gym_location(id) ON DELETE CASCADE,
     INDEX idx_member_checkin (member_id, check_in_time),
     INDEX idx_location_checkin (gym_location_id, check_in_time)
 );
