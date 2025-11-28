@@ -8,7 +8,7 @@
 -- Inventory: The store needs to track how many copies of each book are in stock
 
 CREATE TABLE book(
-    id UUID PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     isbn VARCHAR(13) UNIQUE NOT NULL,
     publication_year INT,
@@ -19,15 +19,15 @@ CREATE TABLE book(
 );
 
 CREATE TABLE author(
-    id UUID PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     email VARCHAR(255)
 );
 
 CREATE TABLE book_author(
-    book_id UUID,
-    author_id UUID,
+    book_id CHAR(36),
+    author_id CHAR(36),
     author_order INT, -- For display order
     PRIMARY KEY (book_id, author_id),
     FOREIGN KEY (book_id) REFERENCES book(id) ON DELETE CASCADE,
@@ -35,7 +35,7 @@ CREATE TABLE book_author(
 );
 
 CREATE TABLE customer(
-    id UUID PRIMARY KEY,
+    id CHAR(36) PRIMARY KEY,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -45,8 +45,8 @@ CREATE TABLE customer(
 );
 
 CREATE TABLE customer_address(
-    id UUID PRIMARY KEY,
-    customer_id UUID NOT NULL,
+    id CHAR(36) PRIMARY KEY,
+    customer_id CHAR(36) NOT NULL,
     street VARCHAR(255) NOT NULL,
     city VARCHAR(100) NOT NULL,
     state VARCHAR(50) NOT NULL,
@@ -57,19 +57,19 @@ CREATE TABLE customer_address(
 );
 
 CREATE TABLE `order`(
-    id UUID PRIMARY KEY,
-    customer_id UUID NOT NULL,
+    id CHAR(36) PRIMARY KEY,
+    customer_id CHAR(36) NOT NULL,
     status ENUM('pending', 'processing', 'shipped', 'delivered', 'cancelled') DEFAULT 'pending',
     order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    shipping_address_id UUID,
+    shipping_address_id CHAR(36),
     FOREIGN KEY (customer_id) REFERENCES customer(id),
     FOREIGN KEY (shipping_address_id) REFERENCES customer_address(id)
 );
 
 CREATE TABLE order_item(
-    id UUID PRIMARY KEY,
-    order_id UUID NOT NULL,
-    book_id UUID NOT NULL,
+    id CHAR(36) PRIMARY KEY,
+    order_id CHAR(36) NOT NULL,
+    book_id CHAR(36) NOT NULL,
     quantity INT NOT NULL CHECK (quantity > 0),
     price_at_purchase DECIMAL(10,2) NOT NULL, -- Store historical price
     FOREIGN KEY (order_id) REFERENCES `order`(id) ON DELETE CASCADE,
@@ -77,9 +77,9 @@ CREATE TABLE order_item(
 );
 
 CREATE TABLE review(
-    id UUID PRIMARY KEY,
-    customer_id UUID NOT NULL,
-    book_id UUID NOT NULL,
+    id CHAR(36) PRIMARY KEY,
+    customer_id CHAR(36) NOT NULL,
+    book_id CHAR(36) NOT NULL,
     rating TINYINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
     comment TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -89,7 +89,7 @@ CREATE TABLE review(
 );
 
 CREATE TABLE inventory(
-    book_id UUID PRIMARY KEY,
+    book_id CHAR(36) PRIMARY KEY,
     quantity_available INT NOT NULL DEFAULT 0,
     quantity_reserved INT NOT NULL DEFAULT 0,
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
